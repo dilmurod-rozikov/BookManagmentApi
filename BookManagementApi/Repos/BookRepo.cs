@@ -56,6 +56,7 @@ public class BookRepo : IBookRepo
 	public async Task DeleteBook(Book entity)
 	{
 		entity.IsDeleted = true;
-		await _appDbContext.SaveChangesAsync();
+        _appDbContext.Books.Update(entity);
+        await _appDbContext.SaveChangesAsync();
 	}
 }
