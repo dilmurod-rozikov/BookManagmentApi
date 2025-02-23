@@ -18,5 +18,6 @@ namespace BookManagmentApi.Models
         public string AuthorName { get; set; }
 
         public int ViewCount { get; set; }
+        public bool IsDeleted { get; set; }
     }
 }
