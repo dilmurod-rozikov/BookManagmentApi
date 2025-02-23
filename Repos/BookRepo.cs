@@ -12,27 +12,42 @@ public class BookRepo : IBookRepo
 
 	public async Task<Book> GetBook(Guid id)
 	{
-		return await _appDbContext.Books.FindAsync(id);
+		var book = await _appDbContext.Books.FindAsync(id);
+		if(book is not null)
+		{
+			book.ViewCount++;
+		}
+
+		return book;
 	}
 
 	public async Task<IEnumerable<Book>> GetBooks()
 	{
-		return await _appDbContext.Books.AsNoTracking().ToListAsync();
+		var books = await _appDbContext.Books.ToListAsync();
+		foreach (var book in books)
+		{
+			if (book is not null)
+			{
+				book.ViewCount++;
+			}
+		}
+
+        return books;
 	}
 
 	public async Task InsertBook(Book entity)
 	{
 		await _appDbContext.Books.AddAsync(entity);
-        await _appDbContext.SaveChangesAsync();
-    }
+		await _appDbContext.SaveChangesAsync();
+	}
 
-    public async Task InsertMultipleBooks(List<Book> books)
-    {
-        _appDbContext.Books.AddRange(books);
-        await _appDbContext.SaveChangesAsync();
-    }
+	public async Task InsertMultipleBooks(List<Book> books)
+	{
+		_appDbContext.Books.AddRange(books);
+		await _appDbContext.SaveChangesAsync();
+	}
 
-    public async Task UpdateBook(Book entity)
+	public async Task UpdateBook(Book entity)
 	{
 		_appDbContext.Books.Update(entity);
 		await _appDbContext.SaveChangesAsync();

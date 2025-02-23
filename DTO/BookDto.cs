@@ -1,12 +1,9 @@
 ﻿using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
 
-namespace BookManagmentApi.Models
+namespace BookManagmentApi.DTO
 {
-    [Table("books")]
-    public class Book
+    public class BookDto
     {
-        [Key]
         public Guid Id { get; set; }
 
         [Required]
@@ -17,7 +14,6 @@ namespace BookManagmentApi.Models
         [StringLength(100)]
         public string AuthorName { get; set; }
 
-        public int ViewCount { get; set; } = 1;
-        public bool IsDeleted { get; set; }
+        public int ViewCount { get; set; }
     }
 }
