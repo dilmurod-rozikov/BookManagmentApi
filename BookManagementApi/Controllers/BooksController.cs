@@ -12,9 +12,13 @@ namespace BookManagmentApi.Controllers
         private readonly IBookService _bookService = bookService;
 
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<string>>> GetAllBooksTitle()
+        public async Task<ActionResult<IEnumerable<string>>>
+            GetAllBooksTitle([FromQuery] int page = 1, [FromQuery] int pageSize = 25)
         {
             var books = await _bookService.GetBooks();
+            books = books.OrderByDescending(book => book.ViewCount)
+                .Skip((page - 1) * pageSize) 
+                .Take(pageSize);
             return Ok(books.Select(book => book.Title));
         }
 
@@ -27,66 +31,64 @@ namespace BookManagmentApi.Controllers
 
             var dto = new BookDto()
             {
+                Id = book.Id,
                 Title = book.Title,
                 AuthorName = book.AuthorName,
                 ViewCount = book.ViewCount
             };
+
             return Ok(dto);
         }
 
         [HttpPost]
-        public async Task<IActionResult> AddSingleBook([FromBody] BookDto dto)
+        public async Task<IActionResult> AddSingleBook([FromBody] CreateBookDto dto)
         {
             if (dto is null || string.IsNullOrWhiteSpace(dto.Title) || string.IsNullOrWhiteSpace(dto.AuthorName))
                 return BadRequest("Invalid book data.");
 
             var books = await _bookService.GetBooks();
-            foreach(var book in books)
-            {
-                if(book.Title.Equals(dto.Title.Trim(), StringComparison.OrdinalIgnoreCase))
-                {
-                    return BadRequest($"{dto.Title} is already exist!");
-                }
-            }
             var newBook = new Book()
             {
                 AuthorName = dto.AuthorName.Trim(),
                 Title = dto.Title.Trim(),
             };
 
-            await _bookService.InsertBook(newBook);
-            return CreatedAtAction(nameof(GetBook), new { id = newBook.Id }, newBook);
+            try
+            {
+                await _bookService.InsertBook(newBook);
+                return CreatedAtAction(nameof(GetBook), new { id = newBook.Id });
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, "An error occurred while updating the book.");
+            }
         }
 
         [HttpPost("bulk-insert")]
-        public async Task<IActionResult> AddMultipleBooks([FromBody] List<BookDto> booksDto)
+        public async Task<IActionResult> AddMultipleBooks([FromBody] List<CreateBookDto> booksDto)
         {
             if (booksDto.Count == 0)
                 return BadRequest("Book list cannot be empty.");
 
             var books = await _bookService.GetBooks();
-            foreach (var bookDto in booksDto)
-            {
-                foreach (var book in books)
-                {
-                    if (book.Title.Equals(bookDto.Title.Trim(), StringComparison.OrdinalIgnoreCase))
-                    {
-                        return BadRequest($"{bookDto.Title} is already exist!");
-                    }
-                }
-            }
             var newBooks = booksDto.ConvertAll(dto => new Book()
             {
                 Title = dto.Title,
                 AuthorName = dto.AuthorName,
             });
-
-            await _bookService.InsertMultipleBooks(newBooks);
-            return Created();
+            try
+            {
+                await _bookService.InsertMultipleBooks(newBooks);
+                return Created();
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, "There may be duplicate books!!");
+            }
         }
 
-        [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateSingleBook(Guid id, [FromBody] BookDto dto)
+        [HttpPatch("{id}")]
+        public async Task<IActionResult> UpdateSingleBook(Guid id, [FromBody] CreateBookDto dto)
         {
             var book = await _bookService.GetBook(id);
             if(book == null)
@@ -120,8 +122,16 @@ namespace BookManagmentApi.Controllers
             {
                 return NotFound("Id is invalid!");
             }
-            await _bookService.DeleteBook(book);
-            return NoContent();
+
+            try
+            {
+                await _bookService.DeleteBook(book);
+                return NoContent();
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, "An error occurred while updating the book.");
+            }
         }
 
         [HttpDelete("bulk-delete")]
@@ -142,12 +152,19 @@ namespace BookManagmentApi.Controllers
             {
                 return NotFound("No valid books found for deletion.");
             }
-            else
-            {
-                foreach (var book in books)
-                    await _bookService.DeleteBook(book);
-            }
 
+            foreach (var book in books)
+            {
+                try
+                {
+                    await _bookService.DeleteBook(book);
+                }
+                catch (Exception)
+                {
+                    return StatusCode(500, "An error occurred while updating the book.");
+                }
+            }
+          
             return NoContent();
         }
     }
